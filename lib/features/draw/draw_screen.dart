@@ -1,5 +1,6 @@
 import 'package:drawing_app/features/draw/models/stroke_model.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 
 class DrawScreen extends StatefulWidget {
   const DrawScreen({super.key});
@@ -14,6 +15,60 @@ class _DrawScreenState extends State<DrawScreen> {
   List<Offset> _currentPoints = [];
   Color _selectedColor = Colors.black;
   double _brushSize = 4.0;
+  late Box<List<Stroke>> _drawingBox;
+
+  @override
+  void initState() {
+    _initializeHive();
+    super.initState();
+  }
+
+  _initializeHive() {
+    _drawingBox = Hive.box<List<Stroke>>('drawings');
+  }
+
+  Future<void> _saveDrawing(String name) async{
+    await _drawingBox.put(name, _strokes);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Drawing $name saved!")));
+  }
+
+  void showSaveDialog(){
+    final TextEditingController _controller = TextEditingController();
+    showDialog(
+        context: context,
+        builder: (context){
+          return AlertDialog(
+            title: AlertDialog(
+              title: Text('Save Drawing'),
+              content: TextField(
+                controller: _controller,
+                decoration: InputDecoration(
+                  hintText: 'Enter drawing name',
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: (){
+                  Navigator.of(context).pop();
+                }, child: Text('Cancel')),
+                TextButton(onPressed: (){
+                  final name = _controller.text.trim();
+                  if(name.isNotEmpty){
+                    _saveDrawing(name);
+                    Navigator.of(context).pop();
+                  }
+                }, child: Text('Save')),
+              ],
+            ),
+          );
+        }
+    );
+  }
+
+  @override
+  void dispose() {
+    Hive.close();
+    super.dispose();
+  }
   @override
   Widget build(BuildContext context) {
     return  Scaffold(
@@ -37,7 +92,7 @@ class _DrawScreenState extends State<DrawScreen> {
               onPanEnd: (details){
                 setState(() {
                   _strokes.add(
-                    Stroke(points: List.from(_currentPoints), color: _selectedColor, brushSize: _brushSize)
+                    Stroke.fromOffsets(points: List.from(_currentPoints), color: _selectedColor, brushSize: _brushSize)
                   );
                   _currentPoints = [];
                   _redoStrokes = [];
@@ -57,6 +112,7 @@ class _DrawScreenState extends State<DrawScreen> {
           _buildToolbar(),
         ],
       ),
+      floatingActionButton: FloatingActionButton(onPressed: (){},child: Icon(Icons.save),),
     );
   }
 
@@ -157,13 +213,13 @@ class DrawPainter extends CustomPainter {
     //Draw completed stroke
     for(final stroke in strokes){
       final paint = Paint()
-          ..color = stroke.color
+          ..color = stroke.strokeColor
           ..strokeCap = StrokeCap.round
           ..strokeWidth = stroke.brushSize;
-
+      final points = stroke.offsetPoints;
       for (int i=0; i< stroke.points.length-1; i++){
-        if(stroke.points[i] != Offset.zero && stroke.points[i+1] != Offset.zero){
-          canvas.drawLine(stroke.points[i], stroke.points[i+1], paint);
+        if(points[i] != Offset.zero && points[i+1] != Offset.zero){
+          canvas.drawLine(points[i], points[i+1], paint);
         }
       }
     }
