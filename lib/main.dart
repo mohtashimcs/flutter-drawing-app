@@ -15,7 +15,7 @@ void main() async {
   Hive.registerAdapter(CustomOffsetAdapter());
   Hive.registerAdapter(StrokeAdapter());
 
-  await Hive.openBox<List<Stroke>>('drawings');
+  await Hive.openBox<Map<dynamic, dynamic>>('drawings');
 
   runApp(const MyApp());
 }
