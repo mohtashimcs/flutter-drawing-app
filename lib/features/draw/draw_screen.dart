@@ -16,15 +16,25 @@ class _DrawScreenState extends State<DrawScreen> {
   Color _selectedColor = Colors.black;
   double _brushSize = 4.0;
   late Box<List<Stroke>> _drawingBox;
+  String? _drawingName;
 
   @override
   void initState() {
-    _initializeHive();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeHive();
+    });
     super.initState();
   }
 
-  _initializeHive() {
-    _drawingBox = Hive.box<List<Stroke>>('drawings');
+  Future<void>_initializeHive() async{
+    _drawingBox = Hive.box('drawings');
+    final name = ModalRoute.of(context)?.settings.arguments as String?;
+    if(name != null){
+      setState(() {
+        _drawingName = name;
+        _strokes = _drawingBox.get(name) ?? [];
+      });
+    }
   }
 
   Future<void> _saveDrawing(String name) async{
@@ -53,6 +63,9 @@ class _DrawScreenState extends State<DrawScreen> {
                 TextButton(onPressed: (){
                   final name = _controller.text.trim();
                   if(name.isNotEmpty){
+                    setState(() {
+                      _drawingName = name;
+                    });
                     _saveDrawing(name);
                     Navigator.of(context).pop();
                   }
@@ -73,7 +86,7 @@ class _DrawScreenState extends State<DrawScreen> {
   Widget build(BuildContext context) {
     return  Scaffold(
       appBar: AppBar(
-        title: Text('Draw your dreams'),
+        title: Text(_drawingName ?? 'Draw your dreams'),
       ),
       body: Column(
         children: [
@@ -112,7 +125,7 @@ class _DrawScreenState extends State<DrawScreen> {
           _buildToolbar(),
         ],
       ),
-      floatingActionButton: FloatingActionButton(onPressed: (){},child: Icon(Icons.save),),
+      floatingActionButton: FloatingActionButton(onPressed: showSaveDialog,child: Icon(Icons.save),),
     );
   }
 
